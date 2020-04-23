@@ -23,9 +23,9 @@ class Graph
 {
 public:
     vector<vector<unsigned int>> path;
-	Graph(int capacity);
+	Graph();
     int getNodeCnt();
-    bool addNode(Node* pNode);
+    bool addNode(Node pNode);
     int findNode(unsigned int data);
     bool setMatrixValue(int row, int col, int val = 1);
     void printMatrix(int size);
@@ -35,25 +35,21 @@ public:
 	~Graph();
 
 private:
-    int m_iCapacity;
     int m_iNodeCnt;
-    Node* m_NodeArray;
-    int* m_Matrix;
+    vector<Node> m_NodeArray;
+    vector<vector<int>> m_Matrix;
     vector<unsigned int> p;
     
     bool getValueOfMatrix(int row, int col, int& val);
 };
 
-Graph::Graph(int capacity)
+Graph::Graph()
 {
-    m_iCapacity = capacity;
     m_iNodeCnt = 0;
-    m_NodeArray = new Node[m_iCapacity];
-    m_Matrix = new int[m_iCapacity * m_iCapacity];
-    for (int i = 0; i < m_iCapacity * m_iCapacity; ++i)
-    {
-        m_Matrix[i] = 0;
-    }
+    vector<int> v1;
+    v1.push_back(0);
+    m_Matrix.push_back(v1);
+    
 }
 
 int Graph::getNodeCnt()
@@ -62,17 +58,22 @@ int Graph::getNodeCnt()
 }
 bool Graph::getValueOfMatrix(int row, int col, int& val)
 {
-    if (row < 0 || row >= m_iCapacity) return false;
-    if (col < 0 || col >= m_iCapacity) return false;
-    val = m_Matrix[row + col * m_iCapacity];
+    if (row < 0 || row >= (m_iNodeCnt + 1)) return false;
+    if (col < 0 || col >= (m_iNodeCnt + 1)) return false;
+    val = m_Matrix[row][col];
     return true;
 }
-bool Graph::addNode(Node* pNode)
+bool Graph::addNode(Node pNode)//可优化
 {
-    if (pNode == NULL)
+    if (&pNode == NULL)
         return false;
-    m_NodeArray[m_iNodeCnt].m_uData = pNode->m_uData;
+    m_NodeArray.push_back(pNode);
     m_iNodeCnt++;
+    vector<int> newV(m_iNodeCnt);
+    m_Matrix.push_back(newV);
+    for (auto &v : m_Matrix)
+        v.push_back(0);
+
     return true;
 }
 int Graph::findNode(unsigned int data)//可优化
@@ -85,9 +86,9 @@ int Graph::findNode(unsigned int data)//可优化
 }
 bool Graph::setMatrixValue(int row, int col, int val)
 {
-    if (row < 0 || row >= m_iCapacity) return false;
-    if (col < 0 || col >= m_iCapacity) return false;
-    m_Matrix[row + col * m_iCapacity] = val;
+    if (row < 0 || row >= (m_iNodeCnt + 1)) return false;
+    if (col < 0 || col >= (m_iNodeCnt + 1)) return false;
+    m_Matrix[row][col] = val;
     return true;
 }
 void Graph::printMatrix(int size)
@@ -96,7 +97,7 @@ void Graph::printMatrix(int size)
     {
         for (int k = 0; k < size; k++)
         {
-            cout << m_Matrix[i + m_iCapacity * k] << " ";
+            cout << m_Matrix[i][k] << " ";
         }
         cout << endl;
     }
@@ -111,7 +112,7 @@ void Graph::depthFirstSearch(int nodeIndex)
         return;
     }
     m_NodeArray[nodeIndex].m_IsVisited = true;
-    for (int i = 0; i < m_iCapacity; ++i)
+    for (int i = 0; i < (m_iNodeCnt + 1); ++i)
     {
         getValueOfMatrix(nodeIndex, i, value);
         if (value == 1)
@@ -148,9 +149,9 @@ void Graph::depthFirstSearch(int nodeIndex)
 }
 void Graph::disableNode(int nodeIndex)
 {
-    for (int col = 0; col < m_iCapacity; ++col)
+    for (int col = 0; col < (m_iNodeCnt + 1); ++col)
         setMatrixValue(nodeIndex, col, 0);
-    for (int raw = 0; raw < m_iCapacity; ++raw)
+    for (int raw = 0; raw < (m_iNodeCnt + 1); ++raw)
         setMatrixValue(raw, nodeIndex, 0);
 }
 
@@ -164,8 +165,6 @@ void Graph::findPath()
 }
 Graph::~Graph()
 {
-    delete[]m_NodeArray;
-    delete[]m_Matrix;
 }
 
 bool sorFun(const vector<unsigned int>& p1, const vector<unsigned int>& p2)
@@ -188,7 +187,7 @@ bool sorFun(const vector<unsigned int>& p1, const vector<unsigned int>& p2)
 
 int main()
 {
-    Graph G(7000);
+    Graph G;
 	ifstream file("test_data.txt");
     string str;
     while (getline(file,str)) //把每一行输入连成图
@@ -210,19 +209,19 @@ int main()
         if (i1 == -1 && i2 == -1)
         {
             i1 = G.getNodeCnt();
-            G.addNode(&aNode);          
-            G.addNode(&bNode);
+            G.addNode(aNode);          
+            G.addNode(bNode);
             i2 = i1 + 1;
         }
         else if (i1 != -1 && i2 == -1)
         {
             i2 = G.getNodeCnt();
-            G.addNode(&bNode);
+            G.addNode(bNode);
         }
         else if (i1 == -1 && i2 != -1)
         {
             i1 = G.getNodeCnt();
-            G.addNode(&aNode);
+            G.addNode(aNode);
         }
         G.setMatrixValue(i1, i2);
 
