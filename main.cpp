@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <vector>
 #include <algorithm>
 #include <string>
@@ -23,72 +24,82 @@ class Graph
 {
 public:
     vector<vector<unsigned int>> path;
-	Graph();
+    Graph(int capacity);
     int getNodeCnt();
-    bool addNode(Node pNode);
-    int findNode(unsigned int data);
-    bool setMatrixValue(int row, int col, int val = 1);
+    bool addNode(Node* pNode);
+    void findNode(unsigned int data1, unsigned int data2, int& i1, int& i2);
+    bool setMatrixValue(int row, int col, char val = 1);
     void printMatrix(int size);
-    void depthFirstSearch(int nodeIndex);
+    void depthFirstSearch(const int& nodeIndex);
     void disableNode(int nodeIndex);
     void findPath();
 	~Graph();
 
 private:
     int m_iNodeCnt;
+    int m_iCapacity;
     vector<Node> m_NodeArray;
-    vector<vector<int>> m_Matrix;
+    char* m_Matrix;
     vector<unsigned int> p;
-    
-    bool getValueOfMatrix(int row, int col, int& val);
+    int targetIndex;
+    bool getValueOfMatrix(int row, int col, char& val);
 };
 
-Graph::Graph()
+Graph::Graph(int capacity)
 {
+    targetIndex = 0;
+    m_iCapacity = capacity;
     m_iNodeCnt = 0;
-    vector<int> v1;
-    v1.push_back(0);
-    m_Matrix.push_back(v1);
-    
+    m_Matrix = new char[m_iCapacity * m_iCapacity];
+    for (int i = 0; i < m_iCapacity * m_iCapacity; ++i)
+    {
+        m_Matrix[i] = 0;
+    }
 }
 
 int Graph::getNodeCnt()
 {
     return m_iNodeCnt;
 }
-bool Graph::getValueOfMatrix(int row, int col, int& val)
+bool Graph::getValueOfMatrix(int row, int col, char& val)
 {
-    if (row < 0 || row >= (m_iNodeCnt + 1)) return false;
-    if (col < 0 || col >= (m_iNodeCnt + 1)) return false;
-    val = m_Matrix[row][col];
+    if (row < 0 || row >= m_iCapacity) return false;
+    if (col < 0 || col >= m_iCapacity) return false;
+    val = m_Matrix[row + col * m_iCapacity];
     return true;
 }
-bool Graph::addNode(Node pNode)//可优化
+bool Graph::addNode(Node* pNode)//可优化
 {
-    if (&pNode == NULL)
+    if (pNode == NULL)
         return false;
-    m_NodeArray.push_back(pNode);
+    m_NodeArray.push_back(*pNode);
     m_iNodeCnt++;
-    vector<int> newV(m_iNodeCnt);
-    m_Matrix.push_back(newV);
-    for (auto &v : m_Matrix)
-        v.push_back(0);
-
     return true;
 }
-int Graph::findNode(unsigned int data)//可优化
+void Graph::findNode(unsigned int data1, unsigned int data2, int& i1, int &i2)
 {
+    bool flag1 = false, flag2 = false;
     for (int k = 0; k < m_iNodeCnt; ++k)
     {
-        if (m_NodeArray[k].m_uData == data) return k;
+        if (m_NodeArray[k].m_uData == data1)
+        {
+            i1 = k;
+            flag1 = true;
+        }
+        if (m_NodeArray[k].m_uData == data2)
+        {
+            i2 = k;
+            flag2 = true;
+        }
     }
-    return -1;
+    if (!flag1) i1 = -1;
+    if (!flag2) i2 = -1;
 }
-bool Graph::setMatrixValue(int row, int col, int val)
+bool Graph::setMatrixValue(int row, int col, char val)
 {
-    if (row < 0 || row >= (m_iNodeCnt + 1)) return false;
-    if (col < 0 || col >= (m_iNodeCnt + 1)) return false;
-    m_Matrix[row][col] = val;
+    if (row < 0 || row >= m_iCapacity) return false;
+    if (col < 0 || col >= m_iCapacity) return false;
+    m_Matrix[row + col * m_iCapacity] = val;
     return true;
 }
 void Graph::printMatrix(int size)
@@ -97,61 +108,95 @@ void Graph::printMatrix(int size)
     {
         for (int k = 0; k < size; k++)
         {
-            cout << m_Matrix[i][k] << " ";
+            cout << m_Matrix[i + m_iCapacity * k] << " ";
         }
         cout << endl;
     }
 }
-void Graph::depthFirstSearch(int nodeIndex)
+void Graph::depthFirstSearch(const int& nodeIndex)
 {
-    int value = 0;
+    char value = 0;
     p.push_back(m_NodeArray[nodeIndex].m_uData);
-    if (p.size() >= 8)
-    {
-        p.pop_back();
-        return;
-    }
     m_NodeArray[nodeIndex].m_IsVisited = true;
-    for (int i = 0; i < (m_iNodeCnt + 1); ++i)
+    //这里在深度为7的时候进行优化
+    if (p.size() > 2)
     {
-        getValueOfMatrix(nodeIndex, i, value);
+        //getValueOfMatrix(nodeIndex, targetIndex, value);
+        value = m_Matrix[nodeIndex + targetIndex * m_iCapacity];
+        if (p.size() != 7 && value == 0)
+        {//什么都不做但是避免了判断
+        }
+        else if (p.size() == 7 && value == 1)
+        {
+            vector<unsigned int> tmp;
+            unsigned int min = p[0];
+            for (auto u : p)
+            {
+                if (u < min) min = u;
+            }
+            auto minIter = find(p.begin(), p.end(), min);
+            for (int j = 0; j < p.size(); ++j)
+            {
+                tmp.push_back(*minIter);
+                minIter++;
+                if (minIter == p.end()) minIter = p.begin();
+            }
+            path.push_back(tmp);
+            //cout << path.size() << endl;
+            m_NodeArray[nodeIndex].m_IsVisited = false;
+            p.pop_back();
+            return;
+        }
+        else if (p.size() != 7 && value == 1)
+        {
+            vector<unsigned int> tmp;
+            unsigned int min = p[0];
+            for (auto u : p)
+            {
+                if (u < min) min = u;
+            }
+            auto minIter = find(p.begin(), p.end(), min);
+            for (int j = 0; j < p.size(); ++j)
+            {
+                tmp.push_back(*minIter);
+                minIter++;
+                if (minIter == p.end()) minIter = p.begin();
+            }
+            path.push_back(tmp);
+            //cout << path.size() << endl;
+        }
+        else if (p.size() == 7 && value == 0)
+        {
+            m_NodeArray[nodeIndex].m_IsVisited = false;
+            p.pop_back();
+            return;
+        }
+    }
+    
+    
+    for (int i = 0; i < m_iNodeCnt ; ++i)
+    {
+        value = m_Matrix[nodeIndex + i * m_iCapacity];
         if (value == 1)
         {
-            if (m_NodeArray[i].m_uData == p[0] && p.size() > 2)
-            {
-                vector<unsigned int> tmp;
-                unsigned int min = p[0];
-                for (auto u : p)
-                {
-                    if (u < min) min = u;
-                }
-                auto minIter = find(p.begin(), p.end(), min);
-                for (int j = 0; j < p.size(); ++j)
-                {
-                    tmp.push_back(*minIter);
-                    minIter++;
-                    if (minIter == p.end()) minIter = p.begin();
-                }
-                path.push_back(tmp);
-                continue;
-            }
             if (m_NodeArray[i].m_IsVisited == true)
                 continue;
             else
-            {                
+            {
                 depthFirstSearch(i);
             }
         }
     }
+
     m_NodeArray[nodeIndex].m_IsVisited = false;
     p.pop_back();
     return;
 }
 void Graph::disableNode(int nodeIndex)
 {
-    for (int col = 0; col < (m_iNodeCnt + 1); ++col)
+    for (int col = nodeIndex; col < (m_iNodeCnt + 1); ++col)
         setMatrixValue(nodeIndex, col, 0);
-    for (int raw = 0; raw < (m_iNodeCnt + 1); ++raw)
+    for (int raw = nodeIndex; raw < (m_iNodeCnt + 1); ++raw)
         setMatrixValue(raw, nodeIndex, 0);
 }
 
@@ -159,12 +204,14 @@ void Graph::findPath()
 {
     for (int i = 0; i < m_iNodeCnt; ++i)
     {
+        targetIndex = i;
         depthFirstSearch(i);
         disableNode(i);
     }
 }
 Graph::~Graph()
 {
+    delete[]m_Matrix;
 }
 
 bool sorFun(const vector<unsigned int>& p1, const vector<unsigned int>& p2)
@@ -187,50 +234,65 @@ bool sorFun(const vector<unsigned int>& p1, const vector<unsigned int>& p2)
 
 int main()
 {
-    Graph G;
-	ifstream file("test_data.txt");
+    Graph G(50000);
+	ifstream file("/data/test_data.txt");
+    //ifstream file("test_data.txt");
     string str;
+    int cnt = 0;
+    //cout << "File opened, start to load data" << endl;
     while (getline(file,str)) //把每一行输入连成图
     {
+        
         int dot = str.find(',');
-        string sa = str.substr(0,dot);
+        string n1 = str.substr(0,dot);
         str.erase(0,dot + 1);
     
         dot = str.find(',');
-        string sb = str.substr(0,dot);
+        string n2 = str.substr(0,dot);
+        /*
+
+        istringstream readStr(str);
+        string n1, n2;
+        getline(readStr, n1, ',');
+        getline(readStr, n2, ',');
+        */
 
         int i1, i2;
-        unsigned int a = atoi(sa.c_str());
-        unsigned int b = atoi(sb.c_str());
+        unsigned int a = atoi(n1.c_str());
+        unsigned int b = atoi(n2.c_str());
         
         Node aNode(a), bNode(b);
         //if (G.getNodeCnt() == 0) G.addNode(&aNode);
-        i1 = G.findNode(a); i2 = G.findNode(b);
+        G.findNode(a, b, i1, i2);
         if (i1 == -1 && i2 == -1)
         {
             i1 = G.getNodeCnt();
-            G.addNode(aNode);          
-            G.addNode(bNode);
+            G.addNode(&aNode);          
+            G.addNode(&bNode);
             i2 = i1 + 1;
         }
         else if (i1 != -1 && i2 == -1)
         {
             i2 = G.getNodeCnt();
-            G.addNode(bNode);
+            G.addNode(&bNode);
         }
         else if (i1 == -1 && i2 != -1)
         {
             i1 = G.getNodeCnt();
-            G.addNode(aNode);
+            G.addNode(&aNode);
         }
-        G.setMatrixValue(i1, i2);
-
+        if (!G.setMatrixValue(i1, i2)) return 0;
+        if (cnt % 100 == 0)
+            cout << "loaded " << cnt << endl;
+	++cnt;
     }
     file.close();
+    //cout << "Start to search" << endl;
     G.findPath();
-    sort(G.path.begin(), G.path.end(), sorFun);//按照输出规则排序
 
-    ofstream output("result_test.txt");
+    std::sort(G.path.begin(), G.path.end(), sorFun);//按照输出规则排序
+
+    ofstream output("/projects/student/result.txt");
     output << G.path.size() << endl;
     for (int j = 0; j < G.path.size(); ++j)
     {
